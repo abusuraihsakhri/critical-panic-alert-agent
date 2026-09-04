@@ -63,3 +63,43 @@ def test_supervisor_consensus_and_audit():
     assert main(["audit", "--task-id", "CLI-TEST-01"]) == 0
     assert main(["chat", "Explain", "specifications"]) == 0
     assert main(["verify-audit"]) == 0
+
+
+def test_input_validation_rejects_nan():
+    """Test that NaN metric values are rejected."""
+    with pytest.raises(ValueError, match="finite"):
+        SystemTaskPayload(task_id="T1", target_identifier="KEY-01", primary_metric=float("nan"))
+
+
+def test_input_validation_rejects_infinity():
+    """Test that Infinity metric values are rejected."""
+    with pytest.raises(ValueError, match="finite"):
+        SystemTaskPayload(task_id="T1", target_identifier="KEY-01", primary_metric=float("inf"))
+
+
+def test_input_validation_rejects_empty_task_id():
+    """Test that empty task_id is rejected."""
+    with pytest.raises(ValueError):
+        SystemTaskPayload(task_id="   ", target_identifier="KEY-01", primary_metric=10.0)
+
+
+def test_input_validation_strips_whitespace():
+    """Test that string fields are stripped of whitespace."""
+    payload = SystemTaskPayload(task_id="  T1  ", target_identifier="  KEY-01  ", primary_metric=10.0)
+    assert payload.task_id == "T1"
+    assert payload.target_identifier == "KEY-01"
+
+
+def test_batch_file_not_found():
+    """Test that batch command handles missing file gracefully."""
+    result = main(["batch", "-i", "nonexistent_file.csv"])
+    assert result == 1
+
+
+def test_phi_guard_redaction():
+    """Test that PHI guard properly redacts sensitive information."""
+    text_with_phi = "Patient John Doe MRN-12345678 has condition"
+    redacted = PHIGuard.redact_phi(text_with_phi)
+    assert "REDACTED_IDENTIFIER" in redacted
+    assert "John Doe" not in redacted
+    assert "MRN-12345678" not in redacted

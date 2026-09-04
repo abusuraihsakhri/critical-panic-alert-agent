@@ -12,12 +12,14 @@ import argparse
 import csv
 import datetime
 import json
+import math
 import sys
 import uuid
+from enum import Enum
 from typing import Dict, Any, List, Optional
 
 
-class Severity(str):
+class Severity(str, Enum):
     INFO = "INFO"
     ADVISORY = "ADVISORY"
     WARNING = "WARNING"
@@ -65,11 +67,22 @@ class AgentAlert:
         }
 
 
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    """Safely convert a value to float, ensuring it's finite."""
+    try:
+        result = float(value)
+        if math.isnan(result) or math.isinf(result):
+            return default
+        return result
+    except (TypeError, ValueError):
+        return default
+
+
 class PanicThresholdDetectorAgent:
     """Specialized Sub-Agent 1 for critical-panic-alert-agent"""
     def evaluate(self, payload: Dict[str, Any]) -> List[AgentAlert]:
         alerts = []
-        val1 = float(payload.get("metric_primary", 15.0))
+        val1 = _safe_float(payload.get("metric_primary"), 15.0)
         if val1 > 20.0:
             alerts.append(
                 AgentAlert(
@@ -89,7 +102,7 @@ class DeltaCheckCorrelatorAgent:
     def evaluate(self, payload: Dict[str, Any]) -> List[AgentAlert]:
         alerts = []
         is_critical = bool(payload.get("critical_flag", False))
-        val2 = float(payload.get("metric_secondary", 5.0))
+        val2 = _safe_float(payload.get("metric_secondary"), 5.0)
         if is_critical or val2 > 12.0:
             alerts.append(
                 AgentAlert(
@@ -266,27 +279,44 @@ def main(argv=None):
         return 0
 
     if args.command == "batch":
-        with open(args.input, mode="r", encoding="utf-8-sig") as f:
-            reader = csv.DictReader(f)
-            fieldnames = list(reader.fieldnames or [])
-            rows = list(reader)
+        try:
+            with open(args.input, mode="r", encoding="utf-8-sig") as f:
+                reader = csv.DictReader(f)
+                fieldnames = list(reader.fieldnames or [])
+                rows = list(reader)
+        except FileNotFoundError:
+            print(f"Error: Input file '{args.input}' not found.")
+            return 1
+        except PermissionError:
+            print(f"Error: Permission denied reading '{args.input}'.")
+            return 1
 
         out_fields = fieldnames + ["overall_status", "total_alerts", "critical_count", "consensus_summary"]
         out_rows = []
+        errors = 0
         for r in rows:
-            dossier = coordinator.audit_case(dict(r))
-            row_dict = dict(r)
-            row_dict["overall_status"] = dossier["overall_status"]
-            row_dict["total_alerts"] = dossier["total_alerts"]
-            row_dict["critical_count"] = dossier["critical_count"]
-            row_dict["consensus_summary"] = dossier["consensus_summary"]
-            out_rows.append(row_dict)
+            try:
+                dossier = coordinator.audit_case(dict(r))
+                row_dict = dict(r)
+                row_dict["overall_status"] = dossier["overall_status"]
+                row_dict["total_alerts"] = dossier["total_alerts"]
+                row_dict["critical_count"] = dossier["critical_count"]
+                row_dict["consensus_summary"] = dossier["consensus_summary"]
+                out_rows.append(row_dict)
+            except (ValueError, Exception) as e:
+                errors += 1
+                print(f"Warning: Skipping row due to error: {e}")
 
-        with open(args.output, mode="w", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=out_fields)
-            writer.writeheader()
-            writer.writerows(out_rows)
-        print(f"Processed {len(out_rows)} records -> {args.output}")
+        try:
+            with open(args.output, mode="w", encoding="utf-8", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=out_fields)
+                writer.writeheader()
+                writer.writerows(out_rows)
+        except PermissionError:
+            print(f"Error: Permission denied writing to '{args.output}'.")
+            return 1
+
+        print(f"Processed {len(out_rows)} records -> {args.output} ({errors} errors)")
         return 0
 
     if args.command == "serve":
