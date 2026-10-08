@@ -1,5 +1,7 @@
 # Critical Panic Alert Agent
 
+### [Open the Live Application →](https://abusuraihsakhri.github.io/critical-panic-alert-agent/)
+
 A **research prototype** for evaluating synthetic laboratory alert inputs and exploring rules-based escalation logic. It provides Python command-line tools, a FastAPI service, test fixtures, and a static browser demonstration.
 
 **Not a validated clinical decision support system.** No analyte names, units, patient-specific critical thresholds, notification delivery, acknowledgement workflow, or clinical deployment controls are implemented. The numeric thresholds are illustrative and must not be used for patient care.
