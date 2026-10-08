@@ -35,3 +35,20 @@ jobs:
           path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Smoke test published HTML and JavaScript
+        env:
+          SITE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -eu
+          SITE_URL="${SITE_URL%/}/"
+          for attempt in $(seq 1 12); do
+            if curl --fail --silent --show-error --location "$SITE_URL" -o /tmp/panic-index.html &&
+               curl --fail --silent --show-error --location "${SITE_URL}app.js" -o /tmp/panic-app.js; then
+              break
+            fi
+            sleep 5
+          done
+          grep -q 'id="run-audit"' /tmp/panic-index.html
+          grep -q 'LOCAL_BROWSER_DEMONSTRATION' /tmp/panic-app.js
+          echo "Verified published HTML and JS assets at $SITE_URL"
