@@ -71,7 +71,7 @@ export AUDIT_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32
 docker compose up --build
 ```
 
-Docker Compose refuses to start without `AUDIT_SECRET_KEY`. Its default port mapping exposes `8000` on the host; bind it behind a trusted reverse proxy or change the port binding for restricted access.
+Docker Compose refuses to start without `AUDIT_SECRET_KEY`. Its default port mapping binds `8000` to `127.0.0.1` on the host; do not expose the unauthenticated API directly on a public interface.
 
 ## Tests
 
