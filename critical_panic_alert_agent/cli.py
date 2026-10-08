@@ -79,7 +79,7 @@ def main(argv=None):
             print(f"Error: Permission denied reading '{args.input}'.")
             return 1
 
-        out_fields = fieldnames + ["overall_status", "total_alerts", "stat_critical_alerts", "consensus_summary"]
+        out_fields = list(dict.fromkeys(fieldnames + ["overall_status", "total_alerts", "stat_critical_alerts", "consensus_summary"]))
         out_rows = []
         errors = 0
         for r in rows:
@@ -99,7 +99,7 @@ def main(argv=None):
                 row_dict["stat_critical_alerts"] = dossier["stat_critical_alerts"]
                 row_dict["consensus_summary"] = dossier["consensus_summary"]
                 out_rows.append(row_dict)
-            except (ValueError, Exception) as e:
+            except Exception as e:
                 errors += 1
                 print(f"Warning: Skipping row due to error: {e}")
 
