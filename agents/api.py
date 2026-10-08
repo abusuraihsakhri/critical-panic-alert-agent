@@ -34,6 +34,33 @@ def web_console():
 def web_javascript():
     return FileResponse(Path(__file__).resolve().parent.parent / "web" / "app.js")
 
+@app.get("/python_worker.js", include_in_schema=False)
+def web_python_worker():
+    return FileResponse(Path(__file__).resolve().parent.parent / "web" / "python_worker.js")
+
+
+# Explicit allowlist protects the code-serving endpoint against path traversal.
+BROWSER_PYTHON_FILES = {
+    "agents/__init__.py",
+    "agents/base.py",
+    "agents/rules.py",
+    "critical_panic_alert_agent/__init__.py",
+    "critical_panic_alert_agent/models.py",
+    "critical_panic_alert_agent/engine.py",
+    "critical_panic_alert_agent/agents.py",
+    "panic_alert_agent.py",
+    "browser_engine.py",
+}
+
+
+@app.get("/python/{source_path:path}", include_in_schema=False)
+def browser_python_source(source_path: str):
+    if source_path not in BROWSER_PYTHON_FILES:
+        raise HTTPException(status_code=404, detail="Not found")
+    root = Path(__file__).resolve().parent.parent
+    file_path = root / ("web/browser_engine.py" if source_path == "browser_engine.py" else source_path)
+    return FileResponse(file_path, media_type="text/plain")
+
 
 @app.get("/health")
 def health():

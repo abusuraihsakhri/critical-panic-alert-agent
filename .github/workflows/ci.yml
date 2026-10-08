@@ -27,7 +27,7 @@ jobs:
     - name: Check installed dependencies and Python syntax
       run: |
         python -m pip check
-        python -m compileall -q agents critical_panic_alert_agent cli.py panic_alert_agent.py enrichment.py
+        python -m compileall -q agents critical_panic_alert_agent web/browser_engine.py cli.py panic_alert_agent.py enrichment.py
 
     - name: Run Python test suite
       run: python -m pytest -q
@@ -40,5 +40,7 @@ jobs:
     - name: Check browser JavaScript
       run: |
         node --check web/app.js
+        node --check web/python_worker.js
+        node --check web/browser-smoke.cjs
         node --test web/app.test.cjs
 
