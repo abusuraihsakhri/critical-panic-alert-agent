@@ -1,10 +1,15 @@
-name: Deploy browser demonstration to GitHub Pages
+name: Deploy Python browser application to GitHub Pages
 
 on:
   push:
     branches: [master]
     paths:
       - "web/**"
+      - "agents/rules.py"
+      - "agents/base.py"
+      - "agents/workers.py"
+      - "critical_panic_alert_agent/**"
+      - "panic_alert_agent.py"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -29,7 +34,12 @@ jobs:
       - name: Prepare static site
         run: |
           mkdir -p _site
-          cp web/index.html web/app.js _site/
+          mkdir -p _site/python/agents _site/python/critical_panic_alert_agent
+          cp web/index.html web/app.js web/python_worker.js _site/
+          cp web/browser_engine.py _site/python/
+          cp agents/__init__.py agents/base.py agents/rules.py _site/python/agents/
+          cp critical_panic_alert_agent/__init__.py critical_panic_alert_agent/models.py critical_panic_alert_agent/engine.py critical_panic_alert_agent/agents.py _site/python/critical_panic_alert_agent/
+          cp panic_alert_agent.py _site/python/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
@@ -44,11 +54,25 @@ jobs:
           SITE_URL="${SITE_URL%/}/"
           for attempt in $(seq 1 12); do
             if curl --fail --silent --show-error --location "$SITE_URL" -o /tmp/panic-index.html &&
-               curl --fail --silent --show-error --location "${SITE_URL}app.js" -o /tmp/panic-app.js; then
+               curl --fail --silent --show-error --location "${SITE_URL}app.js" -o /tmp/panic-app.js &&
+               curl --fail --silent --show-error --location "${SITE_URL}python_worker.js" -o /tmp/panic-worker.js &&
+               curl --fail --silent --show-error --location "${SITE_URL}python/agents/rules.py" -o /tmp/panic-rules.py; then
               break
             fi
             sleep 5
           done
           grep -q 'id="run-audit"' /tmp/panic-index.html
-          grep -q 'LOCAL_BROWSER_DEMONSTRATION' /tmp/panic-app.js
+          grep -q 'runPython' /tmp/panic-app.js
+          grep -q 'loadPyodide' /tmp/panic-worker.js
+          grep -q 'evaluate_worker_rules' /tmp/panic-rules.py
           echo "Verified published HTML and JS assets at $SITE_URL"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install headless browser harness
+        run: npm install --no-save --ignore-scripts playwright-core@1.56.1
+      - name: Execute published Python workflow in Chromium
+        env:
+          SITE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: node web/browser-smoke.cjs "${SITE_URL}"
