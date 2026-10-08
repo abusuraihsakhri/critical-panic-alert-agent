@@ -20,6 +20,9 @@ async function main() {
     try {
         const page = await browser.newPage({acceptDownloads: true});
         page.on("pageerror", e => errors.push(e.message));
+        page.on("response", response => {
+            if (response.status() >= 400) errors.push(response.status() + " " + response.url());
+        });
         page.on("console", m => {
             if (m.type() === "error") errors.push(m.text());
         });
