@@ -1,197 +1,90 @@
 # Critical Panic Alert Agent
 
-> **Domain:** Clinical Decision Support & Biomedical Computing
-> **Standards:** CAP / CLSI / ISO / NCCN / WHO
+A **research prototype** for evaluating synthetic laboratory alert inputs and exploring rules-based escalation logic. It provides Python command-line tools, a FastAPI service, test fixtures, and a static browser demonstration.
 
-<div align="center">
+**Not a validated clinical decision support system.** No analyte names, units, patient-specific critical thresholds, notification delivery, acknowledgement workflow, or clinical deployment controls are implemented. The numeric thresholds are illustrative and must not be used for patient care.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg?logo=fastapi&logoColor=white)
-![Audit Trail](https://img.shields.io/badge/Audit-HMAC--SHA256_Tamper--Evident-brightgreen.svg)
-![Zero-PHI Guard](https://img.shields.io/badge/Guard-Zero--PHI_Outbound-blue.svg)
-![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)
+## Features
 
-</div>
+- **Enterprise evaluation** (`agents/`, `cli.py`): three independent rules for primary metric >25, secondary metric >12 or a critical flag, and status-descriptor discordance; summary dossier and an in-memory HMAC audit chain
+- **Clinical-package variant** (`critical_panic_alert_agent/`): separate demonstration rules for primary metric >20, secondary metric >10 or STAT flag, and a biomarker status flag; results are not interchangeable with enterprise evaluation
+- **Legacy standalone variant** (`panic_alert_agent.py`): maintained for backward compatibility, with its own rules and CLI
+- **Browser demonstration** (`web/`): evaluates synthetic inputs locally on GitHub Pages using the enterprise worker conditions; when opened from the FastAPI server, submits data to its `/api/audit` endpoint
+- **CLI and CSV batch processing**, plus an optional JSON API and regression tests
 
----
+The `enrichment.py` module contains **generic threshold demonstrations**, not operational callback tracking, on-call notification, CAP peer benchmarking, or patient-specific enrichment.
 
-## 📖 What It Does
+## Installation
 
-**Critical Panic Alert Agent** is an advanced analytical and computational platform implementing a 15-Minute Closed-Loop Critical Panic Lab Escalation Agent. It automates critical laboratory panic value interception, delta verification, and closed-loop verbal clinician escalation tracking.
-
----
-
-## ⚙️ Key Capabilities & Algorithmic Modules
-
-### 🔬 Core Algorithmic & Evaluation Engines
-
-- **`Severity`** — Severity evaluation and state verification (INFO, ADVISORY, WARNING, CRITICAL_ACTION_REQUIRED)
-- **`DomainKnowledgeRegistry`**: Enterprise domain rules, guideline matrices, and evidence benchmarks
-- **`AgentAlert`** — Agent alert evaluation and state verification
-- **`PanicThresholdDetectorAgent`**: Primary metric threshold monitoring
-- **`DeltaCheckCorrelatorAgent`**: Secondary parameter delta verification and escalation
-- **`EscalationTimerAgent`**: Biomarker discordance and concordance triage
-
-### 🏗️ Architecture
-
-The project contains two parallel implementations:
-
-1. **`agents/` package** — Enterprise-grade implementation with Pydantic v2 models, HMAC-SHA256 audit trail, and PHI guard
-2. **`critical_panic_alert_agent/` package** — Clinical laboratory-focused implementation with CLSI EP28-A3 & Westgard Multi-Rule QC standards
-
----
-
-## 💻 Installation
+Requires Python 3.10 or later.
 
 ```bash
-# Clone the repository
 git clone https://github.com/abusuraihsakhri/critical-panic-alert-agent.git
 cd critical-panic-alert-agent
-
-# Install dependencies
-pip install fastapi uvicorn pydantic pytest
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[test]"
 ```
 
----
+On Windows, use `.venv\\Scripts\\activate` instead of `source .venv/bin/activate`.
 
-## 🚀 CLI Quickstart & Usage
+## Usage
 
-### 1. Single Case Audit (Enterprise Agent)
 ```bash
-python cli.py audit --task-id TASK-001 --primary 28.5 --secondary 14.2 --critical --status DISCORDANT
-```
-
-### 2. Single Case Audit (Clinical Agent)
-```bash
-python critical_panic_alert_agent_app.py audit --case-id CASE-001 --primary 26.2 --secondary 12.5 --stat --status DISCORDANT
-```
-
-### 3. Batch Processing
-```bash
-python cli.py batch -i sample.csv -o results.csv
-```
-
-### 4. Query Air-Gapped Assistant
-```bash
-python cli.py chat "What is the system status?"
-```
-
-### 5. Verify Audit Trail Integrity
-```bash
+# Enterprise evaluator
+python cli.py audit --task-id SYN-001 --target SPECIMEN-001 --primary 28 --secondary 14 --critical
+python cli.py batch -i enterprise-input.csv -o results.csv
 python cli.py verify-audit
-```
 
-### 6. Launch REST API Server
-```bash
+# Distinct clinical demonstration
+python critical_panic_alert_agent_app.py audit --case-id SYN-001 --primary 26 --secondary 12 --stat
+
+# Legacy CLI
+python panic_alert_agent_app.py audit --case-id SYN-001
+
+# REST API and browser interface at http://127.0.0.1:8000/
 python cli.py serve --host 127.0.0.1 --port 8000
 ```
 
-### Parameter Reference
-- `--task-id` / `--case-id`: Unique task/case identifier
-- `--target`: Target entity or specimen identifier
-- `--primary`: Primary measurement value (float)
-- `--secondary`: Secondary metric value (float)
-- `--critical` / `--stat`: Emergency escalation flag
-- `--status`: Status/phenotype descriptor
+The enterprise batch CSV needs `task_id,target_identifier,primary_metric`, with optional `secondary_metric,status_descriptor,is_critical_flag`. The included `sample.csv` uses the **clinical variant's** column names; process it using `python critical_panic_alert_agent_app.py batch -i sample.csv -o results.csv` rather than `python cli.py batch`.
 
-### Input Data Schema (CSV)
+The FastAPI application provides `GET /health`, `GET /metrics`, `POST /api/audit`, and `POST /api/chat`. OpenAPI documentation is at `/docs`. The browser UI is at `/`.
 
-| Field | Description | Requirement |
-|:------|:------------|:------------|
-| `task_id` / `case_id` | Unique identifier | Required |
-| `target_identifier` | Entity or specimen key | Required |
-| `primary_metric` | Primary measurement | Required |
-| `secondary_metric` | Secondary measurement | Optional |
-| `is_critical_flag` / `is_stat` | Emergency flag | Optional |
-| `status_descriptor` / `status_flag` | Status descriptor | Optional |
+## Browser demonstration
 
----
+Open `web/index.html` directly for a local demonstration, or use the GitHub Pages deployment when it is enabled. It runs in the browser without Python, Pyodide, a backend, or network requests to the API. It does not produce real cryptographic audit signatures or contact clinicians. Use **synthetic data only**.
 
-## 🛡️ Security & Enterprise Architecture
+When served by the FastAPI application, the same interface uses the real Python evaluation endpoint. That endpoint is a research demonstration and has **no authentication** for submissions; do not expose it to the public internet or process identifiable patient data.
 
-* **Zero-PHI Outbound Interceptor:** Active regex inspection blocking SSNs, MRNs, phone numbers, emails, and patient identifiers
-* **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation
-* **Input Validation:** Pydantic v2 validators reject NaN, Infinity, and malformed inputs
-* **String Sanitization:** Automatic whitespace stripping and control character removal
-* **Secure Defaults:** Cryptographically random audit key generated if `AUDIT_SECRET_KEY` env var not set
+## Security and data handling
 
-### Environment Variables
-- `AUDIT_SECRET_KEY`: Secret key for HMAC-SHA256 audit trail (generate with `python -c "import secrets; print(secrets.token_hex(32))"`)
-- `MODEL_PROVIDER`: LLM provider selection (`mock`, `ollama`, `claude`, `openai`)
+- The enterprise API applies a limited regular-expression identifier screen, including nested payload data. **Regex checks do not establish HIPAA de-identification, privacy compliance, or complete PHI detection.**
+- Audit events are signed with HMAC-SHA256 and checked on verification. The ledger is **in memory only**, so records, chain state, and any randomly generated signing key are lost after a restart. This is not durable evidence storage.
+- Set `AUDIT_SECRET_KEY` explicitly for a stable signing key. Never commit keys. A signing key previously included in Compose configuration must be treated as exposed if it was ever used.
+- `GET /api/audit/logs` is disabled unless `AUDIT_LOG_API_KEY` is set; requests must then send that value in the `X-Audit-Key` header. Use HTTPS and independent service authentication for any nonlocal access.
+- The static browser demonstration stores no case history or data outside the current page session and does not transmit data to the API on GitHub Pages.
 
----
-
-## 🧪 Testing & Verification
-
-Run the automated test suite:
+## Container
 
 ```bash
-pytest -v
+export AUDIT_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')"
+docker compose up --build
 ```
 
-Execute high-throughput batch simulation benchmarks:
+Docker Compose refuses to start without `AUDIT_SECRET_KEY`. Its default port mapping exposes `8000` on the host; bind it behind a trusted reverse proxy or change the port binding for restricted access.
+
+## Tests
 
 ```bash
-python simulator.py 1000
+python -m pytest -q
+python -m pip check
+python -m compileall -q agents critical_panic_alert_agent
+node --check web/app.js
+node --test web/app.test.cjs
 ```
 
----
+CI runs Python 3.10–3.12 and Node.js 22. JavaScript browser logic has no external dependencies; modern browsers supporting ES2019+ are recommended.
 
-## 🐳 Container Deployment
+## Technology and license
 
-```bash
-docker build -t critical-panic-alert-agent .
-docker run -p 8000:8000 -e AUDIT_SECRET_KEY=$(python -c "import secrets; print(secrets.token_hex(32))") critical-panic-alert-agent
-```
-
-Or using Docker Compose:
-
-```bash
-docker-compose up -d
-```
-
----
-
-## 📁 Project Structure
-
-```
-critical-panic-alert-agent/
-├── agents/                          # Enterprise agent package
-│   ├── __init__.py
-│   ├── api.py                       # FastAPI REST endpoints
-│   ├── base.py                      # PHI guard, HMAC audit trail
-│   ├── learning.py                  # Bayesian calibration engine
-│   ├── llm_factory.py               # LLM provider factory
-│   ├── metrics.py                   # Prometheus metrics collector
-│   ├── models.py                    # Pydantic v2 data models
-│   ├── streamer.py                  # WebSocket telemetry broadcaster
-│   ├── supervisor.py                # Master orchestrator
-│   └── workers.py                   # Specialized worker agents
-├── critical_panic_alert_agent/      # Clinical agent package
-│   ├── __init__.py
-│   ├── agents.py                    # Clinical sub-agents
-│   ├── cli.py                       # Clinical CLI
-│   ├── engine.py                    # Clinical domain rules
-│   ├── models.py                    # Clinical data models
-│   └── server.py                    # Clinical FastAPI server
-├── tests/                           # Test suite
-│   ├── test_critical_panic_alert_agent.py
-│   └── test_enrichment.py
-├── web/                             # Operations console
-│   └── index.html
-├── cli.py                           # Enterprise CLI entry point
-├── panic_alert_agent.py             # Standalone agent implementation
-├── enrichment.py                    # Enrichment feature engines
-├── simulator.py                     # High-throughput simulator
-├── pyproject.toml                   # Project configuration
-├── Dockerfile                       # Container build
-├── docker-compose.yml               # Container orchestration
-└── README.md                        # This file
-```
-
----
-
-## 📄 License
-
-MIT License — see [LICENSE](LICENSE) for details.
+Python, Pydantic v2, FastAPI, standard-library HMAC-SHA256, vanilla JavaScript, and HTML/CSS. Released under the [MIT License](LICENSE).
