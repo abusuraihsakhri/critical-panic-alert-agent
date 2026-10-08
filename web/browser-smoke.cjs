@@ -26,6 +26,7 @@ async function main() {
         await page.goto(site, {waitUntil: "domcontentloaded", timeout: 60000});
         await page.waitForFunction(
             () => document.getElementById("runtime-status")?.textContent.includes("runtime ready"),
+            null,
             {timeout: 180000}
         );
         assert.match(await page.locator("#mode-badge").innerText(), /Python/);
@@ -34,6 +35,7 @@ async function main() {
         await page.locator("#run-audit").click();
         await page.waitForFunction(
             () => document.getElementById("outputConsole")?.textContent.includes('"runtime": "Python'),
+            null,
             {timeout: 30000}
         );
         let dossier = JSON.parse(await page.locator("#outputConsole").innerText());
@@ -51,6 +53,7 @@ async function main() {
         await page.locator("#run-audit").click();
         await page.waitForFunction(
             () => document.getElementById("outputConsole")?.textContent.includes('"runtime": "Python (Pyodide; clinical package)"'),
+            null,
             {timeout: 30000}
         );
         dossier = JSON.parse(await page.locator("#outputConsole").innerText());
@@ -64,6 +67,7 @@ async function main() {
         await page.locator("#run-audit").click();
         await page.waitForFunction(
             () => document.getElementById("outputConsole")?.textContent.includes('"runtime": "Python (Pyodide; standalone package)"'),
+            null,
             {timeout: 30000}
         );
         dossier = JSON.parse(await page.locator("#outputConsole").innerText());
@@ -85,6 +89,7 @@ async function main() {
         await page.locator("#run-batch").click();
         await page.waitForFunction(
             () => document.getElementById("outputConsole")?.textContent.includes('"processed": 3'),
+            null,
             {timeout: 30000}
         );
         const summary = JSON.parse(await page.locator("#outputConsole").innerText());
