@@ -12,7 +12,6 @@ import secrets
 from copy import deepcopy
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
-from pydantic import BaseModel, Field
 
 PHI_PATTERNS = [
     re.compile(r"\b(?:MRN|mrn)[:#\s-]*\d{4,10}\b", re.IGNORECASE),
