@@ -9,6 +9,7 @@ import time
 import hmac
 import hashlib
 import secrets
+from copy import deepcopy
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field
@@ -86,17 +87,31 @@ class AuditTrail:
             "current_hash": signature,
         }
         self.logs.append(entry)
-        return entry
+        return deepcopy(entry)
 
     def verify_integrity(self) -> bool:
-        for i, entry in enumerate(self.logs):
-            prev = self.logs[i-1]["current_hash"] if i > 0 else "GENESIS_BLOCK_0000000000000000"
-            if entry["prev_hash"] != prev:
+        """Verify each HMAC and its predecessor link, not merely the links."""
+        previous_hash = "GENESIS_BLOCK_0000000000000000"
+        signed_fields = ("audit_id", "timestamp", "actor", "actor_tier",
+                         "event_type", "payload_hash", "prev_hash")
+        for entry in self.logs:
+            try:
+                if entry["prev_hash"] != previous_hash:
+                    return False
+                message = "|".join(str(entry[field]) for field in signed_fields)
+                digest = hmac.new(self.secret_key, message.encode("utf-8"),
+                                  hashlib.sha256).hexdigest()
+                recorded_hash = entry["current_hash"]
+                if not isinstance(recorded_hash, str) or not hmac.compare_digest(digest, recorded_hash):
+                    return False
+                previous_hash = recorded_hash
+            except (KeyError, TypeError, ValueError):
                 return False
         return True
 
     def get_trail(self) -> List[Dict[str, Any]]:
-        return self.logs
+        """Return a snapshot so callers cannot mutate the internal log."""
+        return deepcopy(self.logs)
 
 
 GLOBAL_AUDIT = AuditTrail()
