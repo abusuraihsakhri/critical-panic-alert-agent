@@ -43,6 +43,10 @@ def test_api_serves_console_and_works_on_synthetic_data():
     client = TestClient(app)
     assert client.get("/").status_code == 200
     assert client.get("/app.js").status_code == 200
+    assert client.get("/python_worker.js").status_code == 200
+    assert client.get("/python/browser_engine.py").status_code == 200
+    assert client.get("/python/agents/rules.py").status_code == 200
+    assert client.get("/python/../Dockerfile").status_code == 404
     response = client.post("/api/audit", json={
         "task_id": "SYN-01",
         "target_identifier": "SPECIMEN-01",
