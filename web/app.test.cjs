@@ -38,3 +38,46 @@ test("input validation rejects missing, nonfinite and oversized values", () => {
     assert.throws(() => validatePayload(sample({task_id: " "})), /nonempty/);
     assert.throws(() => validatePayload(sample({status_descriptor: "x".repeat(65)})), /character limit/);
 });
+
+const fs = require("node:fs");
+const vm = require("node:vm");
+
+function mountConsole(hostname, fetchImpl) {
+    const elements = {};
+    for (const id of ["mode-badge", "run-audit", "outputConsole", "task_id", "target_id",
+        "primary_metric", "secondary_metric", "status_descriptor", "is_critical",
+        "m-status", "m-tasks", "m-audit", "m-phi"]) {
+        elements[id] = {value: "", textContent: "", checked: false};
+    }
+    elements.task_id.value = "SYN-01";
+    elements.target_id.value = "SPECIMEN-01";
+    elements.primary_metric.value = "26";
+    elements.secondary_metric.value = "12";
+    elements.status_descriptor.value = "NOMINAL";
+    let click;
+    elements["run-audit"].addEventListener = (_event, handler) => {click = handler;};
+    const fakeWindow = {
+        location: {protocol: "https:", hostname},
+        addEventListener: (_event, handler) => handler(),
+        fetch: fetchImpl
+    };
+    const context = {window: fakeWindow, document: {getElementById: id => elements[id]}};
+    vm.runInNewContext(fs.readFileSync(require.resolve("./app.js"), "utf8"), context);
+    return {elements, click: () => click()};
+}
+
+test("GitHub Pages UI uses local rules without calling the API", async () => {
+    const page = mountConsole("example.github.io", () => {throw Error("should not fetch");});
+    await page.click();
+    assert.equal(page.elements["m-tasks"].textContent, "1");
+    assert.equal(page.elements["m-audit"].textContent, "1");
+    assert.equal(page.elements["m-phi"].textContent, "1");
+    assert.match(page.elements.outputConsole.textContent, /LOCAL_BROWSER_DEMONSTRATION/);
+});
+
+test("API failure is reported without fabricated audit output", async () => {
+    const page = mountConsole("localhost", async () => {throw Error("network unavailable");});
+    await page.click();
+    assert.equal(page.elements["m-tasks"].textContent, "");
+    assert.match(page.elements.outputConsole.textContent, /No fallback or fabricated result/);
+});
