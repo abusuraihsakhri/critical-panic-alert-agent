@@ -182,7 +182,8 @@ def evaluate_batch(mode, csv_text):
     ]))
     buf = io.StringIO(newline="")
     writer = csv.DictWriter(buf, fieldnames=export_fields, extrasaction="ignore")
-    writer.writeheader()
+    # CSV headers are untrusted too: escape spreadsheet formula prefixes.
+    writer.writerow({name: _safe_csv_cell(name) for name in export_fields})
     outcomes, errors = [], []
     for line_number, row in enumerate(reader, start=2):
         if line_number > MAX_CSV_ROWS + 1:

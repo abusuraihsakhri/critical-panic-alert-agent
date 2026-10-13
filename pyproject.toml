@@ -37,4 +37,4 @@ critical-panic-alert-engine = "critical_panic_alert_agent.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/abusuraihsakhri/critical-panic-alert-agent"
-Repository = "https://github.com/abusuraihsakhri/critical-panic-alert-engine.git"
+Repository = "https://github.com/abusuraihsakhri/critical-panic-alert-agent"

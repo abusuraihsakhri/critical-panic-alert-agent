@@ -1,5 +1,7 @@
 """Parity, CSV and validation checks for the real browser Python adapter."""
+import csv
 import importlib.util
+import io
 import json
 from pathlib import Path
 
@@ -98,3 +100,26 @@ def test_json_bridge_end_to_end():
         "action": "evaluate", "mode": "enterprise", "payload": example()
     })))
     assert data["total_alerts"] == 3
+
+
+def test_batch_exports_escape_formula_headers_and_cells():
+    result = browser.evaluate_batch(
+        "enterprise",
+        "task_id,target_identifier,primary_metric,=2+3\n"
+        "SYN-01,SPECIMEN-01,5,=1+1\n",
+    )
+    assert result["processed"] == 1
+    rows = list(csv.reader(io.StringIO(result["export_csv"])))
+    assert "'=2+3" in rows[0]
+    assert "'=1+1" in rows[1]
+
+
+def test_batch_rejects_invalid_critical_flag():
+    result = browser.evaluate_batch(
+        "enterprise",
+        "task_id,target_identifier,primary_metric,is_critical_flag\n"
+        "SYN-01,SPECIMEN-01,5,maybe\n",
+    )
+    assert result["processed"] == 0
+    assert result["errors"][0]["row"] == 2
+    assert "flag" in result["errors"][0]["error"]

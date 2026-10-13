@@ -33,6 +33,7 @@ async function main() {
             {timeout: 180000}
         );
         assert.match(await page.locator("#mode-badge").innerText(), /Python/);
+        assert.equal(await page.locator("#api-container").isHidden(), true);
 
         // Enterprise uses the same portable Python rule implementation as the server.
         await page.locator("#run-audit").click();
@@ -49,6 +50,7 @@ async function main() {
 
         // Run original clinical Python classes with different thresholds.
         await page.locator("#engine-mode").selectOption("clinical");
+        assert.equal(await page.locator("#download-json").isDisabled(), true);
         await page.locator("#is_critical").uncheck();
         await page.locator("#primary_metric").fill("24");
         await page.locator("#secondary_metric").fill("11");
@@ -98,6 +100,7 @@ async function main() {
         const summary = JSON.parse(await page.locator("#outputConsole").innerText());
         assert.equal(summary.processed, 3);
         assert.deepEqual(summary.errors, []);
+        assert.equal(await page.locator("#m-audit").innerText(), "13");
         const downloadPromise = page.waitForEvent("download");
         await page.locator("#download-csv").click();
         const download = await downloadPromise;
@@ -108,6 +111,8 @@ async function main() {
         await page.locator("#primary_metric").fill("");
         await page.locator("#run-audit").click();
         assert.match(await page.locator("#outputConsole").innerText(), /Primary metric is required/);
+        assert.equal(await page.locator("#download-json").isDisabled(), true);
+        assert.equal(await page.locator("#download-csv").isDisabled(), true);
         assert.equal(errors.length, 0, "Browser console errors: " + errors.join("; "));
         console.log("PASS: published Pyodide initialized and enterprise, clinical, standalone, CSV export, validation workflows completed");
     } finally {

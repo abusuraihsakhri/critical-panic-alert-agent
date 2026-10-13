@@ -1,7 +1,7 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const {parseMetric, validateCase, browserMode, SAMPLE_ROWS} = require("./app.js");
+const {parseMetric, validateCase, browserMode, localServerMode, countBatchAlerts, SAMPLE_ROWS} = require("./app.js");
 
 const caseData = () => ({
     task_id: "SYN-01",
@@ -36,4 +36,18 @@ test("provides distinct example CSV schemas", () => {
     assert.match(SAMPLE_ROWS.enterprise, /^task_id,target_identifier,primary_metric/);
     assert.match(SAMPLE_ROWS.clinical, /^case_id,patient_synthetic_id,metric_primary/);
     assert.match(SAMPLE_ROWS.standalone, /^case_id,metric_primary/);
+});
+
+test("server-only API option is available only on a local web server", () => {
+    assert.equal(localServerMode({hostname: "localhost", protocol: "http:"}), true);
+    assert.equal(localServerMode({hostname: "127.0.0.1", protocol: "http:"}), true);
+    assert.equal(localServerMode({hostname: "[::1]", protocol: "https:"}), true);
+    assert.equal(localServerMode({hostname: "account.github.io", protocol: "https:"}), false);
+    assert.equal(localServerMode({hostname: "untrusted.example", protocol: "https:"}), false);
+    assert.equal(localServerMode({hostname: "", protocol: "file:"}), false);
+});
+
+test("batch alerts reflect the sum of actual evaluated results", () => {
+    assert.equal(countBatchAlerts([]), 0);
+    assert.equal(countBatchAlerts([{total_alerts: 3}, {total_alerts: 0}, {total_alerts: 2}]), 5);
 });
