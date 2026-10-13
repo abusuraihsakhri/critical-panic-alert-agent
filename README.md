@@ -67,6 +67,8 @@ The single-case UI has three modes:
 
 CSV processing runs through Python's `csv.DictReader` in the browser. Use **Sample CSV** to get each mode's supported schema, upload a synthetic CSV, inspect accepted/rejected rows and download the results. The interface also provides JSON export for individual dossiers. Missing fields, invalid numeric values, unexpected CSV columns, and oversize files are reported rather than replaced with fabricated results.
 
+The browser clears previous JSON/CSV export availability after an evaluation error or an engine switch, and batch alert counts reflect successfully evaluated rows. The optional enterprise server-API control is shown only when the interface runs on a loopback web-server address.
+
 The browser does not transmit entered clinical cases to the application's own backend. Static files and the Pyodide runtime must be downloaded from their respective hosts. Exports occur through your browser's download mechanism. **No clinician notification, closed-loop acknowledgement, scheduled callback, durable audit record, or validated clinical rulebook is implemented.** The browser's enterprise output has no audit signature (`audit_hash: null`).
 
 To run the full interface locally, install the project and start `python cli.py serve`, then open `http://127.0.0.1:8000/`. It also offers an explicit **Use enterprise server API** option for the server implementation. Directly opening `web/index.html` via `file://` is not supported because Pyodide needs HTTP access to the bundled Python source.
