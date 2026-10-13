@@ -57,6 +57,15 @@
         return /\.github\.io$/i.test(location.hostname) || location.protocol === "file:";
     }
 
+    function localServerMode(location) {
+        return ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname) &&
+            ["http:", "https:"].includes(location.protocol);
+    }
+
+    function countBatchAlerts(results) {
+        return results.reduce((total, row) => total + row.total_alerts, 0);
+    }
+
     if (typeof document !== "undefined") {
         const byId = id => document.getElementById(id);
         let worker;
@@ -69,6 +78,13 @@
         let sessionAlerts = 0;
         let lastResult = null;
         let lastCsv = null;
+
+        function clearExports() {
+            lastResult = null;
+            lastCsv = null;
+            byId("download-json").disabled = true;
+            byId("download-csv").disabled = true;
+        }
 
         function notify(message, error = false) {
             const el = byId("runtime-status");
@@ -153,7 +169,7 @@
             const status = isBatch ? result.processed + " rows processed" :
                 (result.overall_urgency || result.overall_status || "COMPLETE");
             sessionCount += isBatch ? result.processed : 1;
-            sessionAlerts += isBatch ? 0 : (Number(result.total_alerts) || 0);
+            sessionAlerts += isBatch ? countBatchAlerts(result.results) : (Number(result.total_alerts) || 0);
             byId("m-tasks").textContent = String(sessionCount);
             byId("m-audit").textContent = String(sessionAlerts);
             byId("m-status").textContent = status;
@@ -167,6 +183,7 @@
         }
 
         function fail(err) {
+            clearExports();
             const msg = err && err.message ? err.message : String(err);
             byId("m-status").textContent = "ERROR";
             byId("outputConsole").textContent = "Evaluation failed: " + msg;
@@ -227,14 +244,15 @@
 
         global.addEventListener("DOMContentLoaded", function () {
             const apiContainer = byId("api-container");
-            if (browserMode(global.location)) {
-                apiContainer.hidden = true;
-            }
+            apiContainer.hidden = !localServerMode(global.location);
             byId("run-audit").addEventListener("click", evaluateSingle);
             byId("run-batch").addEventListener("click", evaluateBatch);
             byId("engine-mode").addEventListener("change", () => {
                 byId("api-mode").checked = false;
                 byId("csv-file").value = "";
+                clearExports();
+                byId("m-status").textContent = "READY";
+                byId("outputConsole").textContent = "Select Evaluate in Python or Process CSV to see results for this engine.";
             });
             byId("download-json").addEventListener("click", () => {
                 if (lastResult) {
@@ -261,6 +279,6 @@
     }
 
     if (typeof module !== "undefined" && module.exports) {
-        module.exports = {parseMetric, validateCase, browserMode, SAMPLE_ROWS};
+        module.exports = {parseMetric, validateCase, browserMode, localServerMode, countBatchAlerts, SAMPLE_ROWS};
     }
 })(typeof window !== "undefined" ? window : globalThis);
